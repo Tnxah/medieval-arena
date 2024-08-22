@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,7 +15,9 @@ public class PlayerRotation : MonoBehaviour
     private Vector2 inputRotation;
     private Vector3 direction;
 
-    private const float gamepadRotationSmoothing = 500;
+    private const float rotationSmoothing = 500;
+
+    private PlayerInput pi;
 
     public Transform Body => body;
 
@@ -43,19 +43,36 @@ public class PlayerRotation : MonoBehaviour
         if (inputRotation == Vector2.zero)
             return;
 
-        direction = cameraPosition.right * inputRotation.x + cameraPosition.forward * inputRotation.y;
+        if (pi.currentControlScheme.Equals("Gamepad"))
+        {
+            direction = cameraPosition.right * inputRotation.x + cameraPosition.forward * inputRotation.y;
+
+        } else if (pi.currentControlScheme.Equals("Keyboard and Mouse"))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(inputRotation);
+            Plane groundPlane = new Plane(Vector3.up, body.position);
+
+            if (groundPlane.Raycast(ray, out var rayDistance))
+            {
+                direction = ray.GetPoint(rayDistance) - body.position;
+            }
+        }
 
         if (direction.sqrMagnitude > 0.0f)
         {
             Quaternion newrotation = Quaternion.LookRotation(direction, Vector3.up);
-            body.transform.rotation = Quaternion.RotateTowards(body.transform.rotation, newrotation, gamepadRotationSmoothing * Time.deltaTime);
-            
+            body.rotation = Quaternion.RotateTowards(body.rotation, newrotation, rotationSmoothing * Time.deltaTime);
         }
     }
 
     private void Update()
     {
         RotatePlayer();
+    }
+
+    public void OnDeviceChange(PlayerInput pi)
+    {
+        this.pi = pi;
     }
 
     private void OnDisable()
